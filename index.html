@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset=utf-8>
+<link href=main.css rel=stylesheet>
+<title>UPNP Tools</title>
+<h1>UPNP Tools</h1>
+<div class=container>
+  <div class=main-content>
+    <button id=btnDiscover>Discover</button>
+    <label>Search Term:
+      <input id=discover-st list=ssdp:terms name=st>
+    </label>
+    <datalist id=ssdp:terms>
+      <option value="ssdp:all"></option>
+      <option value="upnp:rootdevice"></option>
+      <!-- UPNP A/V devices and services -->
+      <option value="urn:schemas-upnp-org:device:MediaRenderer:1"></option>
+      <option value="urn:schemas-upnp-org:device:MediaServer:1"></option>
+      <option value="urn:schemas-upnp-org:service:AVTransport:1"></option>
+      <option value="urn:schemas-upnp-org:service:ConnectionManager:1"></option>
+      <option value="urn:schemas-upnp-org:service:ContentDirectory:1"></option>
+      <option value="urn:schemas-upnp-org:service:RenderingControl:1"></option>
+      <!-- DIAL protocol services -->
+      <option value="urn:dial-multiscreen-org:service:dial:1"></option>
+    </datalist>
+    <ul id=hosts>
+      <!-- populated by clicking Discover -->
+    </ul>
+  </div>
+  <div class=notifications>
+    <h2>Notifications</h2>
+    <label>Enabled: <input id=notifications-enabled type=checkbox checked></label>
+    <ul id="notification-list">
+      <!-- /api/notifications eventsource populates this -->
+    </ul>
+  </div>
+</div>
+<script src=main.js></script>
+
