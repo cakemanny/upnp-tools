@@ -97,6 +97,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             print('parts.path =', parts.path)
             rpath = self.path_and_query(location)
             print('rpath =', rpath)
+            # Sky+ boxes reject our requests unless using this specific
+            # User-Agent string
             conn.request('GET', rpath, headers={
                 'User-Agent':'SKY_skyplus',
                 'Accept-Language':'en'

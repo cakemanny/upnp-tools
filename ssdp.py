@@ -2,21 +2,25 @@
 
 import sys
 import re
-from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR
+from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
 from socket import SO_REUSEPORT, IPPROTO_IP, IP_ADD_MEMBERSHIP, inet_aton
 from socket import timeout as SocketTimeout
 
-SOCKET_TIMEOUT = 6
+SOCKET_TIMEOUT = 10
 SSDP_MULTICAST_ADDR = '239.255.255.250'
 SSDP_MULTICAST_PORT = 1900
 SSDP_MULTICAST_ADDR_PORT = (SSDP_MULTICAST_ADDR, SSDP_MULTICAST_PORT)
 
+BROADCAST_ADDR = '192.168.0.255'
+BROADCAST_PORT = 1900
+BROADCAST_ADDR_PORT = (BROADCAST_ADDR, BROADCAST_PORT)
+
 DISCOVER_TEMPLATE = b"""\
 M-SEARCH * HTTP/1.1\r\n\
-HOST: 239.255.255.250:1900\r\n\
-MAN: "ssdp:discover"\r\n\
-MX: 3\r\n\
-ST: %(st)s\r\n\
+host: 239.255.255.250:1900\r\n\
+man: "ssdp:discover"\r\n\
+mx: 5\r\n\
+st: %(st)s\r\n\
 \r\n\
 """
 
@@ -46,8 +50,14 @@ def discover_stream(st='ssdp:all'):
     s = socket(AF_INET, SOCK_DGRAM)
     try:
         s.settimeout(SOCKET_TIMEOUT) # double the MX random delay value
+        s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+
         msg = DISCOVER_TEMPLATE % { b'st': st.encode('ascii') }
+        bmsg = msg.replace(SSDP_MULTICAST_ADDR.encode('ascii'), BROADCAST_ADDR.encode('ascii'))
+        bmsg2 = msg.replace(SSDP_MULTICAST_ADDR.encode('ascii'), b'255.255.255.255')
         s.sendto(msg, SSDP_MULTICAST_ADDR_PORT)
+        s.sendto(bmsg, BROADCAST_ADDR_PORT)
+        s.sendto(bmsg2, ('255.255.255.255', 1900))
         while True:
             res, addr = s.recvfrom(1024 + 512)
             res1 = res.decode()

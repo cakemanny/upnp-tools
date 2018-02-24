@@ -206,7 +206,7 @@ function xml2js(xml) {
       items: []
     },
     services: [],
-    svcLookup: {},
+    svcLookup: Object.create(null),
   };
 
   let notificationSource = new EventSource("/api/notifications");
@@ -339,23 +339,31 @@ function xml2js(xml) {
     var result = '<li class=notification>';
     // important properties
     result += '<div class=notification-main>';
-    if ('LOCATION' in headers) {
-      let url = new URL(headers.LOCATION);
-      result += esc`<span>${url.host}</span>`;
+
+    // Can get mixed case, so create version with uppercase only
+    var upHeaders = {};
+    for (let k in headers) {
+      upHeaders[k.toUpperCase()] = headers[k];
     }
-    if ('NTS' in headers) {
-      result += esc`<span>${headers.NTS}</span>`;
+
+    if ('LOCATION' in upHeaders) {
+      let url = new URL(upHeaders.LOCATION);
+      result += esc`<span title="host">${url.host}</span>`;
     }
-    if ('ST' in headers) {
-      result += esc`<span><small>${headers.ST}</small></span>`;
+    if ('NTS' in upHeaders) {
+      result += esc`<span title="NTS">${upHeaders.NTS}</span>`;
     }
-    if ('NT' in headers) {
+    if ('ST' in upHeaders) {
+      result += esc`<span title="ST"><small>${upHeaders.ST}</small></span>`;
+    }
+    if ('NT' in upHeaders) {
       result += '<br>';
-      result += esc`<span><small>${headers.NT}</small></span>`;
+      result += esc`<span title="NT"><small>${upHeaders.NT}</small></span>`;
     }
     result += '</div>';
     result += '<dl class="notification-extra hidden">';
-    for (var k in headers) {
+    //result += '<dl class="notification-extra">';
+    for (let k in headers) {
       result += esc`<dt>${k}</dt>`;
       result += esc`<dd>${headers[k]}</dd>`;
     }
@@ -366,7 +374,7 @@ function xml2js(xml) {
 
   $('#btnDiscover').addEventListener('click', function () {
     model.services = [];
-    model.svcLookup = {};
+    model.svcLookup = Object.create(null);
     $('#hosts').innerHTML = '';
     let st = $('#discover-st').value;
     streamJSON('/api/discover', { 'ST': st }, function (headers) {
@@ -377,6 +385,13 @@ function xml2js(xml) {
     });
   });
 
+  $('#hosts').addEventListener('data', function (e) {
+    console.log(e);
+  });
+  $('#hosts').addEventListener('error', function (e) {
+    console.log(e);
+  });
+
   $('#hosts').addEventListener('click', function (e) {
     if (e.target.classList.contains('btn-desc')) {
       let usn = e.target.dataset.usn;
@@ -384,6 +399,8 @@ function xml2js(xml) {
       // have the web server get further info from the LOCATION given
       getXML('/api/description?location=' + encodeURIComponent(svc.headers.LOCATION),
         function (doc) {
+          // TODO: consider firing a new event against the element instead of
+          // nesting callbacks
           let udn = usn.split('::')[0];
           let udnElems = [].filter.call(doc.querySelectorAll('UDN'), e => e.textContent === udn);
           if (udnElems.length < 1) {
@@ -402,6 +419,9 @@ function xml2js(xml) {
           }
         },
         function (status, err) {
+          var errEvent = new Event('error');
+          errEvent.data = err;
+          e.target.dispatchEvent(errEvent);
           console.error(err);
         }
       );
