@@ -7,17 +7,17 @@
 /* jshint esnext:true, debug:true */
 
 function getJSON(path, callback, error) {
-  'use strict';
+  "use strict";
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', path);
-  xhr.setRequestHeader('Accept', 'application/json');
-  xhr.onloadend = function () {
+  xhr.open("GET", path);
+  xhr.setRequestHeader("Accept", "application/json");
+  xhr.onloadend = function() {
     if (xhr.status >= 200 && xhr.status < 400) {
-      if (callback && typeof callback === 'function') {
+      if (callback && typeof callback === "function") {
         callback(JSON.parse(xhr.responseText));
       }
     } else {
-      if (error && typeof error === 'function') {
+      if (error && typeof error === "function") {
         error(xhr.status, xhr.responseText);
       }
     }
@@ -26,37 +26,40 @@ function getJSON(path, callback, error) {
 }
 /** Stream chunked line oriented JSON message from the server */
 function streamJSON(path, headers, onMessage, onError) {
-  'use strict';
-  if (typeof headers === 'function') {
+  "use strict";
+  if (typeof headers === "function") {
     // shift params
     onError = onMessage;
     onMessage = headers;
     headers = undefined;
   }
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', path);
-  xhr.setRequestHeader('Accept', 'application/x-json-stream');
-  if (typeof headers === 'object') {
+  xhr.open("GET", path);
+  xhr.setRequestHeader("Accept", "application/x-json-stream");
+  if (typeof headers === "object") {
     for (let k in headers) {
       xhr.setRequestHeader(k, headers[k]);
     }
   }
   var read = 0;
-  xhr.onload = function (e) {
+  xhr.onload = function(e) {
     if (xhr.status >= 400) {
-      if (onError && typeof onError === 'function') {
+      if (onError && typeof onError === "function") {
         onError(xhr.status, xhr.responseText);
       } else {
         console.error(xhr.responseText);
       }
     }
   };
-  xhr.onprogress = xhr.onloadend = function (e) {
+  xhr.onprogress = xhr.onloadend = function(e) {
     if (xhr.status >= 200 && xhr.status < 400) {
-      console.log('progress/loadend: loaded=' + e.loaded);
+      console.log("progress/loadend: loaded=" + e.loaded);
       if (e.loaded > read) {
         // continue from where we left off
-        let svcsTxt = xhr.responseText.slice(read).split(/\r?\n/).filter(t => t.length);
+        let svcsTxt = xhr.responseText
+          .slice(read)
+          .split(/\r?\n/)
+          .filter(t => t.length);
         let svcs = svcsTxt.map(JSON.parse);
         svcs.forEach(onMessage);
         read = e.loaded;
@@ -67,15 +70,15 @@ function streamJSON(path, headers, onMessage, onError) {
 }
 
 function getXML(path, callback, onError) {
-  'use strict';
+  "use strict";
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', path);
-  xhr.setRequestHeader('Accept', 'text/xml');
-  xhr.onload = function (e) {
+  xhr.open("GET", path);
+  xhr.setRequestHeader("Accept", "text/xml");
+  xhr.onload = function(e) {
     if (xhr.status >= 200 && xhr.status < 400) {
       callback(xhr.responseXML);
     } else {
-      if (typeof onError === 'function') {
+      if (typeof onError === "function") {
         onError(xhr.status, xhr.responseText);
       }
     }
@@ -83,19 +86,19 @@ function getXML(path, callback, onError) {
   xhr.send();
 }
 function postXML(path, headers, data, callback, onError) {
-  'use strict';
+  "use strict";
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', path);
-  xhr.setRequestHeader('Accept', 'text/xml');
-  xhr.setRequestHeader('Content-Type', 'text/xml; charset=utf-8');
+  xhr.open("POST", path);
+  xhr.setRequestHeader("Accept", "text/xml");
+  xhr.setRequestHeader("Content-Type", "text/xml; charset=utf-8");
   for (let k in headers) {
     xhr.setRequestHeader(k, headers[k]);
   }
-  xhr.onload = function (e) {
+  xhr.onload = function(e) {
     if (xhr.status >= 200 && xhr.status < 400) {
       callback(xhr.responseXML);
     } else {
-      if (typeof onError === 'function') {
+      if (typeof onError === "function") {
         onError(xhr.status, xhr.responseText);
       }
     }
@@ -104,8 +107,9 @@ function postXML(path, headers, data, callback, onError) {
 }
 
 function xml2js(xml) {
-  'use strict';
-  if (xml.nodeType === Node.ELEMENT_NODE) { // element
+  "use strict";
+  if (xml.nodeType === Node.ELEMENT_NODE) {
+    // element
     let obj = {};
     if (xml.attributes.length > 0) {
       obj["@attributes"] = {};
@@ -114,18 +118,19 @@ function xml2js(xml) {
       }
     }
     if (xml.hasChildNodes()) {
-      if (xml.firstChild === xml.lastChild &&
-          xml.firstChild.nodeType === Node.TEXT_NODE) {
+      if (
+        xml.firstChild === xml.lastChild &&
+        xml.firstChild.nodeType === Node.TEXT_NODE
+      ) {
         return xml.firstChild.nodeValue;
       }
-      if (xml.nodeName.endsWith('List')) {
+      if (xml.nodeName.endsWith("List")) {
         /* recognise an array like
          * <serviceList><service/><service/></serviceList>
          */
         let isList = true;
         for (let child of xml.children) {
-          if (child.nodeName + 'List' !== xml.nodeName)
-            isList = false;
+          if (child.nodeName + "List" !== xml.nodeName) isList = false;
         }
         if (isList) {
           return [].map.call(xml.children, xml2js);
@@ -133,10 +138,10 @@ function xml2js(xml) {
       }
       for (let item of xml.children) {
         let nodeName = item.nodeName;
-        if (typeof obj[nodeName] === 'undefined') {
+        if (typeof obj[nodeName] === "undefined") {
           obj[nodeName] = xml2js(item);
-        } else if (typeof obj[nodeName].push === 'undefined') {
-          obj[nodeName] = [ obj[nodeName], xml2js(item) ];
+        } else if (typeof obj[nodeName].push === "undefined") {
+          obj[nodeName] = [obj[nodeName], xml2js(item)];
         } else {
           obj[nodeName].push(xml2js(item));
         }
@@ -144,26 +149,26 @@ function xml2js(xml) {
     }
     return obj;
   } else if (xml.nodeType === Node.TEXT_NODE) {
-    return xml.nodeValue.replace(/^\s+|\s+$/g,'');
+    return xml.nodeValue.replace(/^\s+|\s+$/g, "");
   }
 }
 
-(function (window, document, undefined) {
-  'use strict';
+(function(window, document, undefined) {
+  "use strict";
   /* Utility functions etc */
   let $ = document.querySelector.bind(document);
   let $$ = document.querySelectorAll.bind(document);
-  let isArray = x => x && ({}).toString.call(x) === '[object Array]';
-  let isPlainObject = x => x && ({}).toString.call(x) === '[object Object]';
+  let isArray = x => x && {}.toString.call(x) === "[object Array]";
+  let isPlainObject = x => x && {}.toString.call(x) === "[object Object]";
   function str2node(str) {
-    var div = document.createElement('div');
+    var div = document.createElement("div");
     div.innerHTML = str;
     return div.firstChild;
   }
   /** Escape a foreign value that is going to be put in an attribute */
-  var esc = (function () {
+  var esc = (function() {
     var alpha = new Int8Array(256);
-    for (let c of '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz') {
+    for (let c of "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") {
       alpha[c.codePointAt(0)] = 1;
     }
     return function esc(strs, ...exps) {
@@ -171,7 +176,7 @@ function xml2js(xml) {
       strs = strs.slice(1);
       for (let i = 0; i < strs.length; i++) {
         // escape exp[i]
-        let escaped = '';
+        let escaped = "";
         {
           let exp = exps[i];
           for (let j = 0; j < exp.length; j++) {
@@ -179,7 +184,7 @@ function xml2js(xml) {
             if (cp > 255 || alpha[cp]) {
               escaped += exp.charAt(j);
             } else {
-              escaped += '&#x' + cp.toString(16) + ';';
+              escaped += "&#x" + cp.toString(16) + ";";
             }
           }
         }
@@ -187,7 +192,7 @@ function xml2js(xml) {
       }
       return result;
     };
-  }());
+  })();
   function findParent(element, selector) {
     for (let p = element; p != document.documentElement; p = p.parentNode) {
       if (p.matches(selector)) {
@@ -206,7 +211,7 @@ function xml2js(xml) {
       items: []
     },
     services: [],
-    svcLookup: Object.create(null),
+    svcLookup: Object.create(null)
   };
 
   let notificationSource = new EventSource("/api/notifications");
@@ -216,47 +221,49 @@ function xml2js(xml) {
   function renderService(svc) {
     var headers = svc.headers;
     var result = esc`<li class=service id="${headers.USN}">`;
-    result += '<dl class=service-headers>';
+    result += "<dl class=service-headers>";
     for (let k in headers) {
-      if (model.detailed || (k !== 'CACHE-CONTROL' && k !== 'DATE')) {
+      if (model.detailed || (k !== "CACHE-CONTROL" && k !== "DATE")) {
         result += esc`<dt>${k}</dt>`;
-        if (headers[k] === '') {
-          result += '<dd>&nbsp;</dd>';
+        if (headers[k] === "") {
+          result += "<dd>&nbsp;</dd>";
         } else {
           result += esc`<dd>${headers[k]}</dd>`;
         }
       }
     }
-    result += '</dl>';
-    result += esc`<button type=button class=btn-desc data-usn="${headers.USN}">Describe</button>`;
-    result += '<div class=svc-desc-container></div>';
-    result += '<div class=svc-list-container></div>';
-    result += '</li>';
+    result += "</dl>";
+    result += esc`<button type=button class=btn-desc data-usn="${
+      headers.USN
+    }">Describe</button>`;
+    result += "<div class=svc-desc-container></div>";
+    result += "<div class=svc-list-container></div>";
+    result += "</li>";
     return result;
   }
 
   function renderServiceDescription(desc) {
-    var result = '<dl class=service-description>';
+    var result = "<dl class=service-description>";
     for (let k in desc) {
-      if (typeof desc[k] === 'string' && k.indexOf(':') === -1) {
+      if (typeof desc[k] === "string" && k.indexOf(":") === -1) {
         result += esc`<dt>${k}</dt>`;
         result += esc`<dd>${desc[k]}</dd>`;
       }
     }
-    result += '</dl>';
+    result += "</dl>";
     return result;
   }
 
   function renderServiceList(serviceList) {
-    var result = '<ul>';
+    var result = "<ul>";
     for (let service of serviceList) {
       result += esc`<li data-service-id="${service.serviceId}"
                         data-service-type="${service.serviceType}">`;
-      result += '<dl class=soap-service>';
+      result += "<dl class=soap-service>";
       for (let k in service) {
         result += esc`<dt>${k}</dt>`;
         result += esc`<dd>${service[k]}`;
-        if (k === 'SCPDURL') {
+        if (k === "SCPDURL") {
           result += esc` <button type=button
                                  class=btn-methods
                                  data-url="${service[k]}"
@@ -271,74 +278,96 @@ function xml2js(xml) {
                                  data-service-id="${service.serviceId}"
                          >Show State Variables</button>`;
         }
-        result += '</dd>';
+        result += "</dd>";
       }
-      result += '</dl>';
-      result += esc`<div class=methods-container data-control="${service.controlURL}"></div>`;
-      result += '</li>';
+      result += "</dl>";
+      result += esc`<div class=methods-container data-control="${
+        service.controlURL
+      }"></div>`;
+      result += "</li>";
     }
-    return result + '</ul>';
+    return result + "</ul>";
   }
 
   function renderMethods(scpd) {
-    var result = '<ul>';
+    var result = "<ul>";
     for (let action of scpd.actions) {
       result += esc`<li name="${action.name}">`;
-      result += '<form>';
+      result += "<form>";
       result += esc`<strong>${action.name}</strong>`;
       if (action.arguments) {
         for (let argument of action.arguments) {
-          result += '<div>';
-          result += esc`<span class=argument-direction>${argument.direction}</span>`;
-          result += esc`<label class=argument-label for="${argument.name}">${argument.name}</label>`;
+          result += "<div>";
+          result += esc`<span class=argument-direction>${
+            argument.direction
+          }</span>`;
+          result += esc`<label class=argument-label for="${argument.name}">${
+            argument.name
+          }</label>`;
 
           let stateVar = scpd.stateVariables[argument.relatedStateVariable];
-          if (argument.direction === 'in' && stateVar.allowedValues) {
-            let select = document.createElement('select');
-            select.className = 'method-argument';
+          if (argument.direction === "in" && stateVar.allowedValues) {
+            let select = document.createElement("select");
+            select.className = "method-argument";
             select.name = select.title = argument.name;
             select.dataset.direction = argument.direction;
             select.dataset.relatedStateVariable = argument.relatedStateVariable;
-            select.innerHTML +=
-                stateVar.allowedValues.map(v => esc`<option>${v}</option>`).join('');
+            select.innerHTML += stateVar.allowedValues
+              .map(v => esc`<option>${v}</option>`)
+              .join("");
             result += select.outerHTML;
           } else {
             // TODO: use the state variable data type to restrict input e.g. ui4
             // restrict to numbers
-            let input = document.createElement('input');
-            if (['ui1','ui2','ui4','i1','i2','i4','int','r4','r8','number'].includes(stateVar.dataType)) {
-              input.type='number';
-            } else if (stateVar.dataType === 'boolean') {
-              input.type='range';
-              input.value = '0';
+            let input = document.createElement("input");
+            if (
+              [
+                "ui1",
+                "ui2",
+                "ui4",
+                "i1",
+                "i2",
+                "i4",
+                "int",
+                "r4",
+                "r8",
+                "number"
+              ].includes(stateVar.dataType)
+            ) {
+              input.type = "number";
+            } else if (stateVar.dataType === "boolean") {
+              input.type = "range";
+              input.value = "0";
               input.max = 1;
               input.min = 0;
             } else {
-              input.type = 'text';
+              input.type = "text";
             }
-            input.className = 'method-argument';
+            input.className = "method-argument";
             input.name = input.title = input.placeholder = argument.name;
-            if (argument.direction === 'out') {
+            if (argument.direction === "out") {
               input.readOnly = true;
             }
             input.dataset.direction = argument.direction;
             input.dataset.relatedStateVariable = argument.relatedStateVariable;
             result += input.outerHTML;
           }
-          result += '</div>';
+          result += "</div>";
         }
       }
-      result += esc`<button type=button class=btn-send data-action="${action.name}">Send</button>`;
-      result += '</form>';
-      result += '</li>';
+      result += esc`<button type=button class=btn-send data-action="${
+        action.name
+      }">Send</button>`;
+      result += "</form>";
+      result += "</li>";
     }
     return result;
   }
 
   function renderNotification(headers) {
-    var result = '<li class=notification>';
+    var result = "<li class=notification>";
     // important properties
-    result += '<div class=notification-main>';
+    result += "<div class=notification-main>";
 
     // Can get mixed case, so create version with uppercase only
     var upHeaders = {};
@@ -346,103 +375,110 @@ function xml2js(xml) {
       upHeaders[k.toUpperCase()] = headers[k];
     }
 
-    if ('LOCATION' in upHeaders) {
+    if ("LOCATION" in upHeaders) {
       let url = new URL(upHeaders.LOCATION);
       result += esc`<span title="host">${url.host}</span>`;
     }
-    if ('NTS' in upHeaders) {
+    if ("NTS" in upHeaders) {
       result += esc`<span title="NTS">${upHeaders.NTS}</span>`;
     }
-    if ('ST' in upHeaders) {
+    if ("ST" in upHeaders) {
       result += esc`<span title="ST"><small>${upHeaders.ST}</small></span>`;
     }
-    if ('NT' in upHeaders) {
-      result += '<br>';
+    if ("NT" in upHeaders) {
+      result += "<br>";
       result += esc`<span title="NT"><small>${upHeaders.NT}</small></span>`;
     }
-    result += '</div>';
+    result += "</div>";
     result += '<dl class="notification-extra hidden">';
     //result += '<dl class="notification-extra">';
     for (let k in headers) {
       result += esc`<dt>${k}</dt>`;
       result += esc`<dd>${headers[k]}</dd>`;
     }
-    result += '</dl>';
-    return result += '</li>';
+    result += "</dl>";
+    return (result += "</li>");
   }
 
-
-  $('#btnDiscover').addEventListener('click', function () {
+  $("#btnDiscover").addEventListener("click", function() {
     model.services = [];
     model.svcLookup = Object.create(null);
-    $('#hosts').innerHTML = '';
-    let st = $('#discover-st').value;
-    streamJSON('/api/discover', { 'ST': st }, function (headers) {
+    $("#hosts").innerHTML = "";
+    let st = $("#discover-st").value;
+    streamJSON("/api/discover", { ST: st }, function(headers) {
       var svc = { headers };
       model.services.push(svc);
       model.svcLookup[headers.USN] = svc;
-      $('#hosts').appendChild(str2node(renderService(svc)));
+      $("#hosts").appendChild(str2node(renderService(svc)));
     });
   });
 
-  $('#hosts').addEventListener('data', function (e) {
+  $("#hosts").addEventListener("data", function(e) {
     console.log(e);
   });
-  $('#hosts').addEventListener('error', function (e) {
+  $("#hosts").addEventListener("error", function(e) {
     console.log(e);
   });
 
-  $('#hosts').addEventListener('click', function (e) {
-    if (e.target.classList.contains('btn-desc')) {
+  $("#hosts").addEventListener("click", function(e) {
+    if (e.target.classList.contains("btn-desc")) {
       let usn = e.target.dataset.usn;
       let svc = model.svcLookup[usn];
       // have the web server get further info from the LOCATION given
-      getXML('/api/description?location=' + encodeURIComponent(svc.headers.LOCATION),
-        function (doc) {
+      getXML(
+        "/api/description?location=" + encodeURIComponent(svc.headers.LOCATION),
+        function(doc) {
           // TODO: consider firing a new event against the element instead of
           // nesting callbacks
-          let udn = usn.split('::')[0];
-          let udnElems = [].filter.call(doc.querySelectorAll('UDN'), e => e.textContent === udn);
+          let udn = usn.split("::")[0];
+          let udnElems = [].filter.call(
+            doc.querySelectorAll("UDN"),
+            e => e.textContent === udn
+          );
           if (udnElems.length < 1) {
-            console.log('could not find matching device in description');
+            console.log("could not find matching device in description");
           } else {
             let svcRoot = document.getElementById(usn);
             let deviceElem = udnElems[0].parentNode;
             // convert to javascript object to make manipulation easier
             svc.description = xml2js(deviceElem);
-            let descNode = svcRoot.querySelector('.svc-desc-container');
+            let descNode = svcRoot.querySelector(".svc-desc-container");
             descNode.innerHTML = renderServiceDescription(svc.description);
 
             svc.serviceList = svc.description.serviceList;
-            let listNode = svcRoot.querySelector('.svc-list-container');
+            let listNode = svcRoot.querySelector(".svc-list-container");
             listNode.innerHTML = renderServiceList(svc.serviceList);
           }
         },
-        function (status, err) {
-          var errEvent = new Event('error');
+        function(status, err) {
+          var errEvent = new Event("error");
           errEvent.data = err;
           e.target.dispatchEvent(errEvent);
           console.error(err);
         }
       );
-    } else if (e.target.classList.contains('btn-methods')) {
+    } else if (e.target.classList.contains("btn-methods")) {
       let path = e.target.dataset.url;
       let serviceId = e.target.dataset.serviceId;
-      let usn = findParent(e.target, 'li.service').id;
+      let usn = findParent(e.target, "li.service").id;
       let svc = model.svcLookup[usn];
       let locationURL = new URL(svc.headers.LOCATION);
-      if (path.includes('?')) {
-        locationURL.pathname = path.slice(0, path.indexOf('?'));
-        locationURL.search = path.slice(path.indexOf('?'));
+      if (path.includes("?")) {
+        locationURL.pathname = path.slice(0, path.indexOf("?"));
+        locationURL.search = path.slice(path.indexOf("?"));
       } else {
         locationURL.pathname = path;
       }
       let scpdURL = locationURL.href;
-      getXML('/api/scpd?location=' + encodeURIComponent(scpdURL), function (doc) {
+      getXML("/api/scpd?location=" + encodeURIComponent(scpdURL), function(
+        doc
+      ) {
         var scpd = xml2js(doc.documentElement);
         // process the state variables first
         if (!isArray(scpd.serviceStateTable.stateVariable)) {
-          scpd.serviceStateTable.stateVariable = [ scpd.serviceStateTable.stateVariable ];
+          scpd.serviceStateTable.stateVariable = [
+            scpd.serviceStateTable.stateVariable
+          ];
         }
         // create a lookup of the stateVars by name
         scpd.stateVariables = {};
@@ -461,76 +497,93 @@ function xml2js(xml) {
           action.arguments = action.argumentList;
           delete action.argumentList;
         }
-        let resultElem = document.getElementById(usn)
+        let resultElem = document
+          .getElementById(usn)
           .querySelector('[data-service-id="' + serviceId + '"]')
-          .querySelector('.methods-container');
+          .querySelector(".methods-container");
 
         resultElem.innerHTML = renderMethods(scpd);
       });
-    } else if (e.target.classList.contains('btn-send')) {
-      e.target.style.color = 'black';
+    } else if (e.target.classList.contains("btn-send")) {
+      e.target.style.color = "black";
       let action = e.target.dataset.action;
-      let serviceType = findParent(e.target,
-          '[data-service-type]').dataset.serviceType;
-      let SOAPACTION = '"' + serviceType + '#' + action + '"';
+      let serviceType = findParent(e.target, "[data-service-type]").dataset
+        .serviceType;
+      let SOAPACTION = '"' + serviceType + "#" + action + '"';
       // I can't work out how to get the XMLSerializer to repro the <?xml?>
       // part without including it here
-      let doc = (new DOMParser()).parseFromString(
-          '<?xml version="1.0" encoding="utf-8"?>' +
-          '<s:Envelope' +
+      let doc = new DOMParser().parseFromString(
+        '<?xml version="1.0" encoding="utf-8"?>' +
+          "<s:Envelope" +
           ' xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"' +
           ' s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"' +
-          '/>','text/xml');
+          "/>",
+        "text/xml"
+      );
       {
-        let soapNS = 'http://schemas.xmlsoap.org/soap/envelope/';
-        let bodyElem = doc.documentElement.appendChild(doc.createElementNS(soapNS, 's:Body'));
-        let methodElem = bodyElem.appendChild(doc.createElementNS(serviceType, 'u:'+action));
-        for (let [k,v] of new FormData(e.target.form)) {
+        let soapNS = "http://schemas.xmlsoap.org/soap/envelope/";
+        let bodyElem = doc.documentElement.appendChild(
+          doc.createElementNS(soapNS, "s:Body")
+        );
+        let methodElem = bodyElem.appendChild(
+          doc.createElementNS(serviceType, "u:" + action)
+        );
+        for (let [k, v] of new FormData(e.target.form)) {
           let argElem = methodElem.appendChild(doc.createElement(k));
           argElem.textContent = v;
         }
       }
-      let requestText = (new XMLSerializer()).serializeToString(doc);
+      let requestText = new XMLSerializer().serializeToString(doc);
 
-      let usn = findParent(e.target, 'li.service').id;
+      let usn = findParent(e.target, "li.service").id;
       let svc = model.svcLookup[usn];
       let locationURL = new URL(svc.headers.LOCATION);
-      let path = findParent(e.target, '[data-control]').dataset.control;
+      let path = findParent(e.target, "[data-control]").dataset.control;
       debugger;
       let controlURL = locationURL.origin + path;
-      postXML('/api/soap?location=' + encodeURIComponent(controlURL), { SOAPACTION }, requestText, function (xml) {
-        // indicate that we were successful
-        e.target.style.color = 'green';
-        e.target.style.boxShadow = '0 0 5px 1px green';
-        window.setTimeout(function () { e.target.style.boxShadow =''; }, 1000);
-        // write response out to form fields
-        for (var child of xml.querySelector(action + 'Response').children) {
-          e.target.form[child.nodeName].value = child.textContent;
+      postXML(
+        "/api/soap?location=" + encodeURIComponent(controlURL),
+        { SOAPACTION },
+        requestText,
+        function(xml) {
+          // indicate that we were successful
+          e.target.style.color = "green";
+          e.target.style.boxShadow = "0 0 5px 1px green";
+          window.setTimeout(function() {
+            e.target.style.boxShadow = "";
+          }, 1000);
+          // write response out to form fields
+          for (var child of xml.querySelector(action + "Response").children) {
+            e.target.form[child.nodeName].value = child.textContent;
+          }
+        },
+        function() {
+          e.target.style.color = "red";
+          e.target.style.boxShadow = "0 0 5px 1px red";
+          window.setTimeout(function() {
+            e.target.style.boxShadow = "";
+          }, 1000);
         }
-      }, function () {
-        e.target.style.color = 'red';
-        e.target.style.boxShadow = '0 0 5px 1px red';
-        window.setTimeout(function () { e.target.style.boxShadow =''; }, 1000);
-      });
+      );
     }
     e.stopPropagation();
   });
 
-  $('#notifications-enabled').addEventListener('change', function (e) {
+  $("#notifications-enabled").addEventListener("change", function(e) {
     if (e.target.checked && !model.notifications.enabled) {
-      $('#notification-list').style.display = 'block';
+      $("#notification-list").style.display = "block";
       model.notifications.enabled = true;
     }
     if (!e.target.checked && model.notifications.enabled) {
-      $('#notification-list').style.display = 'none';
+      $("#notification-list").style.display = "none";
       model.notifications.enabled = false;
     }
   });
 
-  notificationSource.addEventListener('message', function (e) {
+  notificationSource.addEventListener("message", function(e) {
     var notifications = model.notifications;
     var headers = JSON.parse(e.data);
-    let nl = $('#notification-list');
+    let nl = $("#notification-list");
     if (notifications.items.length >= notifications.maxItems) {
       notifications.items = notifications.items.slice(1);
       nl.removeChild(nl.lastElementChild);
@@ -543,6 +596,4 @@ function xml2js(xml) {
       nl.appendChild(str2node(renderNotification(headers)));
     }
   });
-
-}(this, document));
-
+})(this, document);
