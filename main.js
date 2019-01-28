@@ -454,14 +454,12 @@ function xml2js(xml) {
             // convert to javascript object to make manipulation easier
             let description = xml2js(deviceElem);
 
-            if (svc.headers.ST.startsWith("urn:schemas-upnp-org:device")) {
+            if (svc.headers.ST.match(/^urn:[^:]+:device:/)) {
               if (svc.headers.ST === description.deviceType) {
                 svc.description = description;
                 svc.serviceList = description.serviceList;
               }
-            } else if (
-              svc.headers.ST.startsWith("urn:schemas-upnp-org:service")
-            ) {
+            } else if (svc.headers.ST.match(/^urn:[^:]+:service:/)) {
               let serviceList = description.serviceList.filter(service => {
                 return service.serviceType === svc.headers.ST;
               });
