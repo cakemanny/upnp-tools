@@ -406,10 +406,14 @@ function xml2js(xml) {
     $("#hosts").innerHTML = "";
     let st = $("#discover-st").value;
     streamJSON("/api/discover", { ST: st }, function(headers) {
-      var svc = { headers };
-      model.services.push(svc);
-      model.svcLookup[headers.USN] = svc;
-      $("#hosts").appendChild(str2node(renderService(svc)));
+      // Devices may/should notify multiple times, so dedup once we have
+      // already seen the USN
+      if (!(headers.USN in model.svcLookup)) {
+        var svc = { headers };
+        model.services.push(svc);
+        model.svcLookup[headers.USN] = svc;
+        $("#hosts").appendChild(str2node(renderService(svc)));
+      }
     });
   });
 
@@ -437,18 +441,52 @@ function xml2js(xml) {
           );
           if (udnElems.length < 1) {
             console.log("could not find matching device in description");
-          } else {
-            let svcRoot = document.getElementById(usn);
-            let deviceElem = udnElems[0].parentNode;
-            // convert to javascript object to make manipulation easier
-            svc.description = xml2js(deviceElem);
-            let descNode = svcRoot.querySelector(".svc-desc-container");
-            descNode.innerHTML = renderServiceDescription(svc.description);
-
-            svc.serviceList = svc.description.serviceList;
-            let listNode = svcRoot.querySelector(".svc-list-container");
-            listNode.innerHTML = renderServiceList(svc.serviceList);
+            return;
           }
+          let svcRoot = document.getElementById(usn);
+
+          svc.description = {};
+          svc.serviceList = [];
+          // This device is probably using the same device-UUID for each
+          // embedded device. So lets try filtering by deviceType == ST?
+          udnElems.forEach((udnElem, idx) => {
+            let deviceElem = udnElem.parentNode;
+            // convert to javascript object to make manipulation easier
+            let description = xml2js(deviceElem);
+
+            if (svc.headers.ST.startsWith("urn:schemas-upnp-org:device")) {
+              if (svc.headers.ST === description.deviceType) {
+                svc.description = description;
+                svc.serviceList = description.serviceList;
+              }
+            } else if (
+              svc.headers.ST.startsWith("urn:schemas-upnp-org:service")
+            ) {
+              let serviceList = description.serviceList.filter(service => {
+                return service.serviceType === svc.headers.ST;
+              });
+
+              if (serviceList.length > 0) {
+                svc.serviceList = serviceList;
+                svc.description = description;
+              }
+            } else {
+              if (udnElems.length > 1) {
+                for (let k in description) {
+                  svc.description["[" + idx + "]" + k] = description[k];
+                }
+              } else {
+                svc.description = description;
+              }
+              svc.serviceList = svc.serviceList.concat(description.serviceList);
+            }
+          });
+
+          // Render device description and service list
+          let descNode = svcRoot.querySelector(".svc-desc-container");
+          descNode.innerHTML = renderServiceDescription(svc.description);
+          let listNode = svcRoot.querySelector(".svc-list-container");
+          listNode.innerHTML = renderServiceList(svc.serviceList);
         },
         function(status, err) {
           var errEvent = new Event("error");
@@ -539,7 +577,6 @@ function xml2js(xml) {
       let svc = model.svcLookup[usn];
       let locationURL = new URL(svc.headers.LOCATION);
       let path = findParent(e.target, "[data-control]").dataset.control;
-      debugger;
       let controlURL = locationURL.origin + path;
       postXML(
         "/api/soap?location=" + encodeURIComponent(controlURL),
