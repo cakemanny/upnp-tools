@@ -1,5 +1,5 @@
-
 import socket
+
 
 class RedisClient(object):
     def __init__(self, addr=('127.0.0.1', 6379)):
@@ -14,6 +14,7 @@ class RedisClient(object):
     def _write_command(self, str_list):
         def bs(buf):
             return b'$%d\r\n%s\r\n' % (len(buf), buf)
+
         command = b'*%d\r\n' % len(str_list)
         for item in str_list:
             command += bs(item)
@@ -31,32 +32,36 @@ class RedisClient(object):
             while True:
                 c = self.rfile.read(1)
                 if c == b'\r':
-                    self.rfile.read(1) # skip \n
+                    self.rfile.read(1)  # skip \n
                     return sign * value
                 else:
-                    value = value*10 + (ord(c) - ord('0'))
+                    value = value * 10 + (ord(c) - ord('0'))
+
         def simple_string():
             result = b''
             while True:
                 c = self.rfile.read(1)
                 if c == b'\r':
-                    self.rfile.read(1) # skip \n
+                    self.rfile.read(1)  # skip \n
                     return result.decode()
                 else:
                     result += c
+
         def bulk_string():
             length = integer()
             if length == -1:
                 return None
             result = self.rfile.read(length)
-            self.rfile.read(2) # skip \r\n
+            self.rfile.read(2)  # skip \r\n
             return result
+
         def array():
             length = integer()
             result = []
             for i in range(length):
                 result.append(self._read_response())
-            return result;
+            return result
+
         c = self.rfile.read(1)
         if c == b'+':
             return simple_string()
@@ -79,7 +84,5 @@ class RedisClient(object):
         self._write_command([b'SUBSCRIBE', channel.encode()])
         print(self._read_response())
         while True:
-            [ _, chnl, data ] = self._read_response()
+            [_, chnl, data] = self._read_response()
             yield data
-
-

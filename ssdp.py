@@ -24,13 +24,14 @@ st: %(st)s\r\n\
 \r\n\
 """
 
+
 def discover(st='ssdp:all'):
     services = {}
     # Do ssdp discovery
     s = socket(AF_INET, SOCK_DGRAM)
     try:
-        s.settimeout(SOCKET_TIMEOUT) # double the MX random delay value
-        msg = DISCOVER_TEMPLATE % { b'st': st.encode('ascii') }
+        s.settimeout(SOCKET_TIMEOUT)  # double the MX random delay value
+        msg = DISCOVER_TEMPLATE % {b'st': st.encode('ascii')}
         s.sendto(msg, SSDP_MULTICAST_ADDR_PORT)
         while True:
             res, addr = s.recvfrom(1024 + 512)
@@ -41,19 +42,22 @@ def discover(st='ssdp:all'):
                 services[addr_str] = []
             services[addr_str].append(headers)
     except SocketTimeout:
-        pass # expect to eventually receive all of the responses, then timeout
+        pass  # expect to eventually receive all of the responses, then timeout
     finally:
         s.close()
     return services
 
+
 def discover_stream(st='ssdp:all'):
     s = socket(AF_INET, SOCK_DGRAM)
     try:
-        s.settimeout(SOCKET_TIMEOUT) # double the MX random delay value
+        s.settimeout(SOCKET_TIMEOUT)  # double the MX random delay value
         s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
-        msg = DISCOVER_TEMPLATE % { b'st': st.encode('ascii') }
-        bmsg = msg.replace(SSDP_MULTICAST_ADDR.encode('ascii'), BROADCAST_ADDR.encode('ascii'))
+        msg = DISCOVER_TEMPLATE % {b'st': st.encode('ascii')}
+        bmsg = msg.replace(
+            SSDP_MULTICAST_ADDR.encode('ascii'), BROADCAST_ADDR.encode('ascii')
+        )
         bmsg2 = msg.replace(SSDP_MULTICAST_ADDR.encode('ascii'), b'255.255.255.255')
         s.sendto(msg, SSDP_MULTICAST_ADDR_PORT)
         s.sendto(bmsg, BROADCAST_ADDR_PORT)
@@ -64,9 +68,10 @@ def discover_stream(st='ssdp:all'):
             headers = _read_headers(res1)
             yield headers
     except SocketTimeout:
-        pass # expect to eventually receive all of the responses, then timeout
+        pass  # expect to eventually receive all of the responses, then timeout
     finally:
         s.close()
+
 
 def _read_headers(response):
     if type(response) == bytes:
@@ -83,13 +88,15 @@ def _read_headers(response):
                 headers[key] = m.group(2)
     return headers
 
+
 def _read_headersb(response):
     assert type(response) == bytes
     lines = response.split(b'\r\n')
-    return { k.decode(): ''.join(map(chr, v))
-             for [k,v] in (line.split(b': ', 1)
-                           for line in lines[1:]
-                           if b': ' in line) }
+    return {
+        k.decode(): ''.join(map(chr, v))
+        for [k, v] in (line.split(b': ', 1) for line in lines[1:] if b': ' in line)
+    }
+
 
 def listen():
     """
@@ -102,15 +109,14 @@ def listen():
         s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
         s.bind(('0.0.0.0', SSDP_MULTICAST_PORT))
         # register to receive the multicast
-        s.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                inet_aton(SSDP_MULTICAST_ADDR) + inet_aton('0.0.0.0'))
+        s.setsockopt(
+            IPPROTO_IP,
+            IP_ADD_MEMBERSHIP,
+            inet_aton(SSDP_MULTICAST_ADDR) + inet_aton('0.0.0.0'),
+        )
         while True:
-            res, addr = s.recvfrom(1024 + 512) # big enough for MTU
-            #res1 = res.decode()
-            #headers = _read_headers(res1)
+            res, addr = s.recvfrom(1024 + 512)  # big enough for MTU
             headers = _read_headers(res)
             yield headers
     finally:
         s.close()
-
-

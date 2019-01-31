@@ -7,25 +7,26 @@ import os
 import shutil
 import socketserver
 import ssdp
-import time
 import threading
+import time
 import urllib
 import urllib.request
 from redis import RedisClient
 
+
 class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     pass
 
-class MyHandler(http.server.BaseHTTPRequestHandler):
 
+class MyHandler(http.server.BaseHTTPRequestHandler):
     def sendfile(self, filename, mimetype):
-            self.send_response(HTTPStatus.OK)
-            self.send_header('Content-Type', mimetype)
-            size = os.stat(filename).st_size
-            self.send_header('Content-Length', str(size))
-            self.end_headers()
-            with open(filename, 'rb') as f:
-                shutil.copyfileobj(f, self.wfile)
+        self.send_response(HTTPStatus.OK)
+        self.send_header('Content-Type', mimetype)
+        size = os.stat(filename).st_size
+        self.send_header('Content-Length', str(size))
+        self.end_headers()
+        with open(filename, 'rb') as f:
+            shutil.copyfileobj(f, self.wfile)
 
     def write_chunk(self, data):
         # write chunk length
@@ -35,7 +36,9 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(response)
         self.wfile.flush()
 
-    def respond_simple(self, status, message, content_type='text/plain; charset=utf-8', charset='utf-8'):
+    def respond_simple(
+        self, status, message, content_type='text/plain; charset=utf-8', charset='utf-8'
+    ):
         response_bytes = message.encode(charset)
         self.send_response(HTTPStatus.NOT_FOUND)
         self.send_header('Content-Type', content_type)
@@ -77,7 +80,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     st = 'ssdp:all'
                 for svc in ssdp.discover_stream(st):
                     # convert to json
-                    chunk = (json.dumps(svc)+'\n').encode('utf-8')
+                    chunk = (json.dumps(svc) + '\n').encode('utf-8')
                     self.write_chunk(chunk)
                 # chunked encoding requires us to send an empty chunk at the
                 # end
@@ -87,8 +90,10 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         elif path == '/api/description' or path == '/api/scpd':
             params = urllib.parse.parse_qs(parts.query)
             if 'location' not in params:
-                self.respond_simple(HTTPStatus.BAD_REQUEST,
-                        'location query parameter is required but was missing')
+                self.respond_simple(
+                    HTTPStatus.BAD_REQUEST,
+                    'location query parameter is required but was missing',
+                )
                 return
             location = params['location'][0]
             print('location =', location)
@@ -99,10 +104,11 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             print('rpath =', rpath)
             # Sky+ boxes reject our requests unless using this specific
             # User-Agent string
-            conn.request('GET', rpath, headers={
-                'User-Agent':'SKY_skyplus',
-                'Accept-Language':'en'
-                })
+            conn.request(
+                'GET',
+                rpath,
+                headers={'User-Agent': 'SKY_skyplus', 'Accept-Language': 'en'},
+            )
             try:
                 f = conn.getresponse()
                 self.send_response(HTTPStatus(f.status))
@@ -134,25 +140,31 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         if path == '/api/soap':
             params = urllib.parse.parse_qs(parts.query)
             if 'location' not in params:
-                self.respond_simple(HTTPStatus.BAD_REQUEST,
-                        'location query parameter is required but was missing')
+                self.respond_simple(
+                    HTTPStatus.BAD_REQUEST,
+                    'location query parameter is required but was missing',
+                )
                 return
             location = params['location'][0]
             parts = urllib.parse.urlsplit(location)
 
-            headers = { 'User-Agent': 'SKY_skyplus',
-                    'SOAPACTION': self.headers['SOAPACTION'],
-                    'Content-Type': 'text/xml; charset=utf-8' }
+            headers = {
+                'User-Agent': 'SKY_skyplus',
+                'SOAPACTION': self.headers['SOAPACTION'],
+                'Content-Type': 'text/xml; charset=utf-8',
+            }
             content_len = int(self.headers['Content-Length'])
             print('reading {} bytes of post body...'.format(content_len))
             body = self.rfile.read(content_len)
             print('connecting to ' + parts.netloc)
             conn = http.client.HTTPConnection(parts.netloc)
             print('posting request to ' + self.path_and_query(location))
-            conn.request('POST', self.path_and_query(location), headers=headers, body=body)
+            conn.request(
+                'POST', self.path_and_query(location), headers=headers, body=body
+            )
             try:
                 print('getting response')
-                f = conn.getresponse();
+                f = conn.getresponse()
                 self.send_response(HTTPStatus(f.status))
                 self.send_header('Content-Type', f.getheader('Content-Type'))
                 if f.getheader('Content-Length'):
@@ -165,6 +177,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.respond_simple(HTTPStatus.NOT_FOUND, 'Cannot find ' + self.path)
 
+
 def listen():
     # 1. create connection to redis
     redis = RedisClient()
@@ -176,6 +189,7 @@ def listen():
     finally:
         redis.close()
 
+
 def main():
     t = threading.Thread(target=listen)
     t.start()
@@ -183,7 +197,6 @@ def main():
     print('serving on port 8000')
     httpd.serve_forever()
 
+
 if __name__ == '__main__':
     main()
-
-
