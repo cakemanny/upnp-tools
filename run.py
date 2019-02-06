@@ -193,8 +193,9 @@ def listen():
 def main():
     t = threading.Thread(target=listen)
     t.start()
-    httpd = ThreadedHTTPServer(('127.0.0.1', 8000), MyHandler)
-    print('serving on port 8000')
+    host, port = '127.0.0.1', 8000
+    httpd = ThreadedHTTPServer((host, port), MyHandler)
+    print(f'listening at http://{host}:{port}/')
     httpd.serve_forever()
 
 
