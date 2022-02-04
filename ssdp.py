@@ -3,8 +3,15 @@
 import sys
 import re
 from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
-from socket import SO_REUSEPORT, IPPROTO_IP, IP_ADD_MEMBERSHIP, inet_aton
+from socket import IPPROTO_IP, IP_ADD_MEMBERSHIP, inet_aton
 from socket import timeout as SocketTimeout
+
+try:
+    # Windows doesn't have SO_REUSEPORT
+    from socket import SO_REUSEPORT
+except ImportError:
+    SO_REUSEPORT = None
+
 
 SOCKET_TIMEOUT = 10
 SSDP_MULTICAST_ADDR = '239.255.255.250'
@@ -106,7 +113,8 @@ def listen():
     s = socket(AF_INET, SOCK_DGRAM)
     try:
         s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        if SO_REUSEPORT is not None:
+            s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
         s.bind(('0.0.0.0', SSDP_MULTICAST_PORT))
         # register to receive the multicast
         s.setsockopt(
