@@ -8,7 +8,6 @@ import shutil
 import socketserver
 import ssdp
 import threading
-import time
 import urllib
 import urllib.request
 from redis import RedisClient
@@ -37,10 +36,11 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.flush()
 
     def respond_simple(
-        self, status, message, content_type='text/plain; charset=utf-8', charset='utf-8'
+        self, status, message, content_type='text/plain; charset=utf-8',
+        charset='utf-8'
     ):
         response_bytes = message.encode(charset)
-        self.send_response(HTTPStatus.NOT_FOUND)
+        self.send_response(status)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(response_bytes)))
         self.end_headers()
@@ -114,13 +114,21 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(HTTPStatus(f.status))
                 self.send_header('Content-Type', f.getheader('Content-Type'))
                 if f.getheader('Content-Length'):
-                    self.send_header('Content-Length', f.getheader('Content-Length'))
+                    self.send_header(
+                        'Content-Length', f.getheader('Content-Length')
+                    )
                 self.end_headers()
                 shutil.copyfileobj(f, self.wfile)
             finally:
                 conn.close()
         elif path == '/api/notifications':
-            redis = RedisClient()
+            try:
+                redis = RedisClient()
+            except ConnectionRefusedError:
+                self.respond_simple(
+                    HTTPStatus.BAD_GATEWAY, 'Redis not available'
+                )
+                return
             try:
                 self.protocol_version = 'HTTP/1.1'
                 self.send_response(HTTPStatus.OK)
@@ -132,7 +140,9 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             finally:
                 redis.close()
         else:
-            self.respond_simple(HTTPStatus.NOT_FOUND, 'Cannot find ' + self.path)
+            self.respond_simple(
+                HTTPStatus.NOT_FOUND, 'Cannot find ' + self.path
+            )
 
     def do_POST(self):
         parts = urllib.parse.urlsplit(self.path)
@@ -180,12 +190,16 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
 
 def listen():
     # 1. create connection to redis
-    redis = RedisClient()
+    try:
+        redis = RedisClient()
+    except ConnectionRefusedError:
+        print("unable to connect to Redis. SSDP notification stream will be disabled")
+        return
     try:
         for msg in ssdp.listen():
             # 2. Write JSON to redis pubsub channel
             json_str = json.dumps(msg)
-            pub_ret = redis.publish('upnp-tools:ssdp', json_str.encode())
+            redis.publish('upnp-tools:ssdp', json_str.encode())
     finally:
         redis.close()
 
